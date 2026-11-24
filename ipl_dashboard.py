@@ -211,34 +211,53 @@ if season != "All":
         st.sidebar.caption(f"Season {season}: {view['Runs'].sum():,.0f} runs in dataset slice")
 if prof.empty:
     prof = d[d["Player"] == p1].sort_values("Season")
+cmp = vs(p1, p2)
+prof2 = d[d["Player"] == p2].sort_values("Season")
+if season != "All":
+    prof2 = prof2[prof2["Season"] == season]
+if cmp and prof2.empty:
+    prof2 = d[d["Player"] == p2].sort_values("Season")
 banner(p1, prof if len(prof) else d[d["Player"] == p1])
 kpis(prof)
-if vs(p1, p2):
+if cmp:
     say("", f'<div class="sa-vs">VS {p2}</div>')
+    banner(p2, prof2)
+    kpis(prof2)
 
 section("Trajectory", "Season-on-season performance")
 a, b = st.columns(2)
 with a:
-    if vs(p1, p2):
-        c = pd.concat([prof.assign(Player=p1), d[d["Player"] == p2].sort_values("Season").assign(Player=p2)])
+    if cmp:
+        c = pd.concat([prof.assign(Player=p1), prof2.assign(Player=p2)])
         ch = px.line(c, x="Season", y=met, color="Player", markers=True, color_discrete_sequence=[G, N])
     else:
         ch = px.line(prof, x="Season", y=met, markers=True, color_discrete_sequence=[G])
     st.plotly_chart(fig(ch, 360, met.replace("_", " ")), width="stretch")
 with b:
-    pool = view if board != "Strike_Rate" else view[view["Balls_Faced"] >= min_b]
-    top = pool.nlargest(10, board).reset_index(drop=True).assign(Rank=lambda x: range(1, len(x) + 1))
-    top["Label"] = top["Rank"].astype(str).str.zfill(2) + " · " + top["Player"] + " · " + top["Season"].astype(str)
-    bar = px.bar(top, x=board, y="Label", orientation="h", color=board, color_continuous_scale=[[0, N], [1, G]])
-    bar.update_layout(showlegend=False, coloraxis_showscale=False, yaxis=dict(categoryorder="total ascending"))
-    tit = f"Top 10 — {board.replace('_', ' ')}" + (f" (season {season})" if season != "All" else "")
+    pool = view[view["Player"].isin([p1, p2])] if cmp else view
+    if board == "Strike_Rate":
+        pool = pool[pool["Balls_Faced"] >= min_b]
+    top = (pool.sort_values(board, ascending=False) if cmp else pool.nlargest(10, board)).reset_index(drop=True)
+    top["Label"] = top["Player"] + " · " + top["Season"].astype(str)
+    bar = px.bar(top, x=board, y="Label", orientation="h", color="Player" if cmp else board,
+                 color_discrete_sequence=[G, N] if cmp else None,
+                 color_continuous_scale=None if cmp else [[0, N], [1, G]])
+    bar.update_layout(showlegend=cmp, coloraxis_showscale=not cmp, yaxis=dict(categoryorder="total ascending"))
+    tit = (f"Compare — {board.replace('_', ' ')}" if cmp else f"Top 10 — {board.replace('_', ' ')}") + (
+        f" (season {season})" if season != "All" else ""
+    )
     st.plotly_chart(fig(bar, 360, tit), width="stretch")
 
 section("Phase", "Where runs are scored (career phase split)")
-st.plotly_chart(phase(prof, "Primary player — phase runs & strike rate"), width="stretch")
+if cmp:
+    f = go.Figure()
+    for nm, pr, c in [(p1, prof, G), (p2, prof2, N)]:
+        f.add_trace(go.Bar(name=nm, x=["Powerplay", "Middle", "Death"], y=[pr[x].sum() for x in PH_RUNS], marker_color=c))
+    f.update_layout(barmode="group", yaxis_title="Runs")
+    st.plotly_chart(fig(f, 300, "Phase runs — head to head"), width="stretch")
+else:
+    st.plotly_chart(phase(prof, "Primary player — phase runs & strike rate"), width="stretch")
 section("Data", "Season-by-season batting log")
-tab = prof[MC_LOG]
-if vs(p1, p2):
-    tab = pd.concat([tab, d[d["Player"] == p2].sort_values("Season")[MC_LOG]])
+tab = pd.concat([prof[MC_LOG], prof2[MC_LOG]]) if cmp else prof[MC_LOG]
 st.dataframe(tab.round(2), width="stretch", hide_index=True)
 foot("Source: Cricsheet IPL · Min 100 balls rule for SR leaderboard · Batting-only scope")
