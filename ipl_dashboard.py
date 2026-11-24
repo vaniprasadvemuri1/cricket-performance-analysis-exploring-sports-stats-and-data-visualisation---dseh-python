@@ -1,4 +1,4 @@
-"""IPL dashboard — streamlit run streamlit.py"""
+"""IPL dashboard — streamlit run ipl_dashboard.py (do not name this file streamlit.py)"""
 
 from pathlib import Path
 

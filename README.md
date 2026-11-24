@@ -42,7 +42,7 @@ IPL_Cricket_Performance_Analysis/
 │   └── 05_Data_Visualization.ipynb
 ├── outputs/
 │   └── figures/             # Saved charts from Notebook 05 (and stats heatmap from 04)
-├── streamlit.py             # Optional IPL web dashboard
+├── ipl_dashboard.py         # Optional IPL web dashboard (Streamlit)
 ├── requirements.txt
 ├── README.md
 └── .gitignore
@@ -96,10 +96,10 @@ Open Jupyter from the **project root** so `Path.cwd()` resolves correctly, or ru
 After notebooks 01–02:
 
 ```bash
-streamlit run streamlit.py
+streamlit run ipl_dashboard.py
 ```
 
-Theme and UI: `.streamlit/config.toml` (cream + navy analytics layout in `streamlit.py` — profiles, phase charts, ranked leaderboards).
+Theme and UI: `.streamlit/config.toml` (cream + navy analytics layout in `ipl_dashboard.py`).
 
 ## Expected outputs
 
